@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_beep/flutter_beep.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:http/http.dart' as http;
 
 class WalkingPage extends StatefulWidget {
   const WalkingPage({super.key});
@@ -42,32 +42,62 @@ class _WalkingPageState extends State<WalkingPage> {
     getResponse();
     super.initState();
   }
+Future<void> getResponse() async {
+  final serverUrl = 'http://192.168.1.8:9001/get_update'; // Endpoint to fetch updates
+  final flutterTts = FlutterTts();
 
-  Future<void> getResponse() async {
+  while (true) {
     try {
-      final wsUrl = Uri.parse('ws://192.168.1.3:9001');
+      final response = await http.get(Uri.parse(serverUrl));
+      print(response.statusCode);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print(data);
+        if (data['object_detected'] == true) {
+           final distance = double.parse(data['distance'].toString()).toStringAsFixed(2);
+          await flutterTts.speak('Object detected at ' + distance + 'meters');
 
-      final channel = WebSocketChannel.connect(wsUrl);
-      await channel.ready;
-      channel.stream.listen((message) async {
-        Map data = jsonDecode(message);
-        print(message);
-        if (data['type'] == 'message') {
-          await Future.delayed(Duration(seconds: 5));
-          FlutterBeep.beep();
-        } else {
-          await Future.delayed(Duration(seconds: 5));
-          flutterTts.speak("Hello World");
           FlutterBeep.playSysSound(AndroidSoundIDs.TONE_CDMA_SOFT_ERROR_LITE);
-          
+
+        } else if (data['object_detected'] == false) {
+          FlutterBeep.beep();
         }
-        // channel.sink.add('received!');
-        // channel.sink.close(status.goingAway);
-      });
+      } else {
+        print('Failed to fetch update: ${response.reasonPhrase}');
+      }
     } catch (e) {
-      debugPrint(e.toString());
+      print('Error: $e');
     }
+
+    // Delay before making the next request (e.g., every 5 seconds)
+    await Future.delayed(Duration(seconds: 5));
   }
+}
+  // Future<void> getResponse() async {
+  //   try {
+  //     final wsUrl = Uri.parse('ws://192.168.1.3:9001');
+
+  //     final channel = WebSocketChannel.connect(wsUrl);
+  //     await channel.ready;
+  //     channel.stream.listen((message) async {
+  //       Map data = jsonDecode(message);
+  //       print(message);
+  //       if (data['type'] == 'message') {
+  //         await Future.delayed(Duration(seconds: 5));
+  //         FlutterBeep.beep();
+  //       } else {
+  //         await Future.delayed(Duration(seconds: 5));
+  //         flutterTts.speak("Hello World");
+  //         FlutterBeep.playSysSound(AndroidSoundIDs.TONE_CDMA_SOFT_ERROR_LITE);
+          
+  //       }
+  //       // channel.sink.add('received!');
+  //       // channel.sink.close(status.goingAway);
+  //     });
+  //   } catch (e) {
+  //     debugPrint(e.toString());
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
