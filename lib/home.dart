@@ -7,7 +7,6 @@ import 'package:visualear/views/science.dart';
 import 'package:visualear/views/walking.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'constant/string.dart';
-import 'package:alan_voice/alan_voice.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 class HomePage extends StatefulWidget {
@@ -58,9 +57,25 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(builder: (context) => const WalkingPage()),
       );
-    } else if (command.contains("go to page two")) {
-      Navigator.pushNamed(context, '/page2');
+    } else if (command.contains("maths")) {
+     Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const Maths()),
+      );
     }
+    else if (command.contains("science")) {
+     Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SciencePage()),
+      );
+    }
+    else if (command.contains("activity")) {
+     Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ActivityPage()),
+      );
+    }
+
   }
 
   void _notifyUser() async {
