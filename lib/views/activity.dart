@@ -280,12 +280,10 @@ class _ActivityPageState extends State<ActivityPage> {
                                           CupertinoIcons
                                               .arrow_right_circle_fill,
                                           size: 50,
-                                          color: Color.fromARGB(
-                                              255, 248, 129, 169)),
+                                          color: Colors.white),
                                       Text("Start Question",
                                           style: TextStyle(
-                                            color: Color.fromARGB(
-                                                255, 248, 129, 169),
+                                            color: Colors.white,
                                           ))
                                     ],
                                   ),
@@ -307,12 +305,10 @@ class _ActivityPageState extends State<ActivityPage> {
                                         CupertinoIcons
                                             .arrow_2_circlepath_circle_fill,
                                         size: 50,
-                                        color:
-                                            Color.fromARGB(255, 248, 129, 169)),
+                                        color: Colors.white),
                                     Text("Repeat Question",
                                         style: TextStyle(
-                                          color: Color.fromARGB(
-                                              255, 248, 129, 169),
+                                         color: Colors.white,
                                         ))
                                   ],
                                 ),
@@ -340,12 +336,11 @@ class _ActivityPageState extends State<ActivityPage> {
                                     Icon(
                                       CupertinoIcons.move,
                                       size: 50,
-                                      color: Color.fromARGB(255, 248, 129, 169),
+                                      color: Colors.white,
                                     ),
                                     Text("Show Money",
                                         style: TextStyle(
-                                          color: Color.fromARGB(
-                                              255, 248, 129, 169),
+                                          color: Colors.white,
                                         ))
                                   ],
                                 ),
@@ -367,11 +362,11 @@ class _ActivityPageState extends State<ActivityPage> {
                                 Icon(
                                   CupertinoIcons.money_dollar_circle_fill,
                                   size: 50,
-                                  color: Color.fromARGB(255, 248, 129, 169),
+                                  color: Colors.white,
                                 ),
                                 Text("Answer Is Done",
                                     style: TextStyle(
-                                      color: Color.fromARGB(255, 248, 129, 169),
+                                      color: Colors.white,
                                     ))
                               ],
                             ),
@@ -399,12 +394,11 @@ class _ActivityPageState extends State<ActivityPage> {
                                     Icon(
                                       CupertinoIcons.floppy_disk,
                                       size: 50,
-                                      color: Color.fromARGB(255, 248, 129, 169),
+                                      color: Colors.white,
                                     ),
                                     Text("Reset Answer",
                                         style: TextStyle(
-                                          color: Color.fromARGB(
-                                              255, 248, 129, 169),
+                                          color: Colors.white,
                                         ))
                                   ],
                                 ),
@@ -426,11 +420,11 @@ class _ActivityPageState extends State<ActivityPage> {
                                 Icon(
                                   CupertinoIcons.repeat,
                                   size: 50,
-                                  color: Color.fromARGB(255, 248, 129, 169),
+                                  color: Colors.white,
                                 ),
                                 Text("Cancel Question",
                                     style: TextStyle(
-                                      color: Color.fromARGB(255, 248, 129, 169),
+                                      color: Colors.white,
                                     ))
                               ],
                             ),
@@ -456,12 +450,11 @@ class _ActivityPageState extends State<ActivityPage> {
                                     Icon(
                                       CupertinoIcons.mic_fill,
                                       size: 50,
-                                      color: Color.fromARGB(255, 248, 129, 169),
+                                      color: Colors.white,
                                     ),
                                     Text("Voice Command",
                                         style: TextStyle(
-                                          color: Color.fromARGB(
-                                              255, 248, 129, 169),
+                                          color: Colors.white,
                                         ))
                                   ],
                                 ),

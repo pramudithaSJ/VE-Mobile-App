@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:visualear/clients/tts_client.dart';
@@ -128,7 +129,7 @@ class _SciencePageState extends State<SciencePage> {
     await flutterTts
         .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
     setState(() {});
-    await flutterTts.speak("Hi");
+    await flutterTts.speak("You are in learning science mode now");
   }
 
   void _sendMessageToServer(Map<String, dynamic> message) {
@@ -159,9 +160,6 @@ class _SciencePageState extends State<SciencePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Learning Science',
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -170,8 +168,58 @@ class _SciencePageState extends State<SciencePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Visual",
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 10, 61, 103),
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Ear",
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 248, 129, 169),
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  ],
+                ),
                 const SizedBox(
                   height: 20,
+                ),
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 10, 61, 103),
+                      borderRadius: BorderRadius.circular(7)),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.circle_grid_hex_fill,
+                        size: 35,
+                        color: Colors.white,
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      Text(
+                        "Science Mode",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 100,
                 ),
                 Center(
                   child: GestureDetector(
@@ -251,6 +299,32 @@ class _SciencePageState extends State<SciencePage> {
                               ))))
                       .toList(),
                 ),
+                const SizedBox(
+                  height: 70,
+                ),
+                GestureDetector(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 10, 61, 103),
+                        borderRadius: BorderRadius.circular(7)),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 10,
+                        ),
+                        Text(
+                          "Stop",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               ],
             ),
           ),

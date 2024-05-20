@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection'; // Import for Queue
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_beep/flutter_beep.dart';
@@ -13,7 +14,6 @@ class WalkingPage extends StatefulWidget {
   @override
   State<WalkingPage> createState() => _WalkingPageState();
 }
-
 
 class Data {
   String? message;
@@ -58,7 +58,7 @@ class _WalkingPageState extends State<WalkingPage> {
     setState(() {
       _ttsSpeaking = true;
     });
-    await flutterTts.speak("hi");
+    await flutterTts.speak("You are in walking mode now");
   }
 
   void _listen() async {
@@ -165,27 +165,29 @@ class _WalkingPageState extends State<WalkingPage> {
     super.dispose();
   }
 
+  void _handleTap() {
+    if (_isStarted) {
+      _sendMessageToServer({
+        'mode': 'walking',
+        'command': 'stop',
+      });
+      _notifyStop();
+      setState(() {
+        _isStarted = false;
+      });
+    } else {
+      _listen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: GestureDetector(
-            onTap: () {
-              if (_isStarted) {
-                _sendMessageToServer({
-                  'mode': 'walking',
-                  'command': 'stop',
-                });
-                _notifyStop();
-                setState(() {
-                  _isStarted = false;
-                });
-              } else {
-                _listen();
-              }
-            },
+      body: GestureDetector(
+        onTap: _handleTap,
+        child: SingleChildScrollView(
+          child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 30),
               child: Column(
@@ -221,7 +223,7 @@ class _WalkingPageState extends State<WalkingPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.add,
+                         CupertinoIcons.location_circle_fill,
                           size: 35,
                           color: Colors.white,
                         ),
@@ -242,19 +244,7 @@ class _WalkingPageState extends State<WalkingPage> {
                     height: 100,
                   ),
                   GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        color = "C";
-                      });
-                      _sendMessageToServer({
-                        'mode': 'walking',
-                        'command': 'start',
-                      });
-                      setState(() {
-                        _isStarted = true;
-                      });
-                      flutterTts.speak("Walking mode started");
-                    },
+                    onTap: _handleTap,
                     child: Container(
                       width: 250,
                       height: 250,
@@ -282,16 +272,7 @@ class _WalkingPageState extends State<WalkingPage> {
                     height: 140,
                   ),
                   GestureDetector(
-                    onTap: () {
-                      if (_ttsSpeaking) {
-                        FlutterBeep.beep();
-                        _sendMessageToServer({
-                          'mode': 'walking',
-                          'command': 'stop',
-                        });
-                        _notifyStop();
-                      }
-                    },
+                    onTap: _handleTap,
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(

@@ -9,9 +9,7 @@ import 'package:visualear/views/science.dart';
 import 'package:visualear/views/walking.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'constant/string.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,38 +21,26 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  late WebSocketChannel _channel;
   late FlutterTts flutterTts;
-
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
-    _connectToWebSocket();
     flutterTts = FlutterTts();
-    
+    welcomeMessage();
   }
 
-  void _connectToWebSocket() {
-    try {
-      final wsUrl = Uri.parse('ws://192.168.1.38:9002');
-      _channel = WebSocketChannel.connect(wsUrl);
-      _channel.stream.listen((message) {
-        // Log the messages received from the server
-        print('Received message: $message');
-      });
-
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ensures the welcome message is played every time the HomePage is re-visited.
+    welcomeMessage();
   }
 
-  void _sendMessageToServer(Map<String, dynamic> message) {
-    if (_channel != null) {
-      _channel.sink.add(jsonEncode(message));
-      print('Sent message: ${jsonEncode(message)}');
-    }
+  void welcomeMessage() async {
+    await flutterTts.speak(
+        "Welcome to Visual Ear. Tap on the screen to give voice command. You can say  'maths' to learn maths, 'science' to learn science, 'activity' to start an activity ,and 'walk' to start walking.");
   }
 
   void _listen() async {
@@ -81,103 +67,64 @@ class _HomePageState extends State<HomePage> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const WalkingPage()),
-      );
+      ).then((_) => welcomeMessage()); // Call welcomeMessage after returning
     } else if (command.contains("maths")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const Maths()),
-      );
+      ).then((_) => welcomeMessage()); // Call welcomeMessage after returning
     } else if (command.contains("science")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SciencePage()),
-      );
+      ).then((_) => welcomeMessage()); // Call welcomeMessage after returning
     } else if (command.contains("activity")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ActivityPage()),
-      );
-      // _sendMessageToServer({'mode': 'money'});
+      ).then((_) => welcomeMessage()); // Call welcomeMessage after returning
+    } else if (command.contains("home")) {
+      welcomeMessage();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        centerTitle: true,
-      ),
       body: SafeArea(
-          child: GestureDetector(
-        onTap: () {
-          _listen();
-        },
-        child: Column(
-          children: [
-            Expanded(
-                flex: 1,
-                child: Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: Container(
-                        color: primaryColor,
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.book_fill,
-                              size: 25,
-                            ),
-                            Text(learningMaths)
-                          ],
-                        ),
-                      )),
-                      const SizedBox(
-                        width: 10,
-                      ),
-                      Expanded(
-                          child: Container(
-                        color: primaryColor,
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.book_fill,
-                              size: 25,
-                            ),
-                            Text(learningScience)
-                          ],
-                        ),
-                      ))
-                    ],
+        child: GestureDetector(
+          onTap: () {
+            _listen();
+          },
+          child: Column(
+            children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Visual",
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 10, 61, 103),
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                )),
-            Expanded(
+                  Text(
+                    "Ear",
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 248, 129, 169),
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Expanded(
                 flex: 1,
                 child: Padding(
                   padding: const EdgeInsets.all(5),
                   child: Row(
                     children: [
-                      Expanded(
-                          child: Container(
-                        color: primaryColor,
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.book_fill,
-                              size: 25,
-                            ),
-                            Text(mathsActivity)
-                          ],
-                        ),
-                      )),
-                      const SizedBox(
-                        width: 10,
-                      ),
                       Expanded(
                         child: Container(
                           color: primaryColor,
@@ -186,19 +133,106 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 CupertinoIcons.book_fill,
-                                size: 25,
+                                color: Colors.white,
+                                size: 50,
                               ),
-                              Text(walking)
+                              Text(
+                                learningMaths,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      )
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Container(
+                          color: primaryColor,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                CupertinoIcons.circle_grid_hex_fill,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                              Text(
+                                learningScience,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ))
-          ],
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          color: primaryColor,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                CupertinoIcons.money_dollar_circle_fill,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                              Text(
+                                mathsActivity,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Container(
+                          color: primaryColor,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                CupertinoIcons.location_circle_fill,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                              Text(
+                                walking,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
   }
 }

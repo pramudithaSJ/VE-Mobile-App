@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:visualear/clients/tts_client.dart';
 import 'package:visualear/clients/ws_client.dart';
@@ -29,7 +29,7 @@ class Data {
 class _MathsState extends State<Maths> {
   late FlutterTts flutterTts;
   String color = "";
-  List<DetectedObject> detectionsList = List.empty();
+  List<DetectedObject> detectionsList = [];
   ObjectDetectionClient? detectionClient;
   bool isStart = false;
   late WebSocketChannel _channel;
@@ -37,6 +37,7 @@ class _MathsState extends State<Maths> {
   bool _isListening = false;
   bool _isStarted = false;
 
+  @override
   void initState() {
     super.initState();
     flutterTts = FlutterTts();
@@ -59,10 +60,10 @@ class _MathsState extends State<Maths> {
         }
         flutterTts.speak("One Item Detected");
         print(data['detections']);
-        String Description = await Maths_OpenAIChatService()
-            .generateDescription(detectionWord);
+        String description =
+            await Maths_OpenAIChatService().generateDescription(detectionWord);
         await flutterTts.speak("this is a ${data['detections']}");
-        await flutterTts.speak(Description);
+        await flutterTts.speak(description);
       });
     } catch (e) {
       debugPrint(e.toString());
@@ -87,7 +88,6 @@ class _MathsState extends State<Maths> {
   }
 
   void _handleCommand(String command) {
-    // Implement navigation logic based on the command
     if (command.contains("back")) {
       Navigator.pop(context);
     } else if (command.contains("go to page two")) {
@@ -103,10 +103,9 @@ class _MathsState extends State<Maths> {
   }
 
   void _notifyUser() async {
-    await flutterTts
-        .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
+    await flutterTts.setSpeechRate(0.5);
     setState(() {});
-    await flutterTts.speak("hi");
+    await flutterTts.speak("You are in learning math mode now");
   }
 
   void _sendMessageToServer(Map<String, dynamic> message) {
@@ -140,28 +139,85 @@ class _MathsState extends State<Maths> {
     stopDetection();
   }
 
-  String speakresult = '';
+  String speakResult = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Learning Maths',
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 30),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(
-                  height: 20,
-                ),
-
-                Center(
-                  child: GestureDetector(
+        child: GestureDetector(
+          onTap: () {
+            if (_isStarted) {
+              _sendMessageToServer({
+                'mode': 'walking',
+                'command': 'stop',
+              });
+              setState(() {
+                _isStarted = false;
+              });
+            } else {
+              _listen();
+            }
+          },
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 30),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Visual",
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 10, 61, 103),
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        "Ear",
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 248, 129, 169),
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 10, 61, 103),
+                        borderRadius: BorderRadius.circular(7)),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.book_fill,
+                          size: 35,
+                          color: Colors.white,
+                        ),
+                        SizedBox(
+                          width: 10,
+                        ),
+                        Text(
+                          "Maths Mode",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 100,
+                  ),
+                  GestureDetector(
                     onTap: () {
                       if (_isStarted) {
                         _sendMessageToServer({
@@ -190,41 +246,37 @@ class _MathsState extends State<Maths> {
                           Text(
                             isStart ? "Detecting" : "Start",
                             style: const TextStyle(
-                                color: Color.fromARGB(255, 10, 61, 103),
-                                fontSize: 50,
-                                fontWeight: FontWeight.bold),
+                              color: Color.fromARGB(255, 10, 61, 103),
+                              fontSize: 50,
+                              fontWeight: FontWeight.bold,
+                            ),
                           )
                         ],
                       ),
                     ),
                   ),
-                ),
-                Text(
-                  speakresult,
-                  style: const TextStyle(
+                  Text(
+                    speakResult,
+                    style: const TextStyle(
                       color: Color.fromARGB(255, 10, 61, 103),
                       fontSize: 20,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
-                //if (detectionsList.isNotEmpty)
-
-                const SizedBox(
-                  height: 10,
-                ),
-                if (detectionsList.isNotEmpty)
-                  const Text('Detections',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (detectionsList.isNotEmpty)
+                    const Text(
+                      'Detections',
                       style:
-                          TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: detectionsList
-                      .map((e) => Card(
-                          child: SizedBox(
+                          TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: detectionsList
+                        .map(
+                          (e) => Card(
+                            child: SizedBox(
                               width: double.maxFinite,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,10 +286,11 @@ class _MathsState extends State<Maths> {
                                       Text(
                                         "${e.count} ${e.label} ${e.confidence}%",
                                         style: const TextStyle(
-                                            fontSize: 25,
-                                            fontWeight: FontWeight.bold),
+                                          fontSize: 25,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                      explainButton(e)
+                                      explainButton(e),
                                     ],
                                   ),
                                   Text(
@@ -245,10 +298,40 @@ class _MathsState extends State<Maths> {
                                     style: const TextStyle(fontSize: 20),
                                   ),
                                 ],
-                              ))))
-                      .toList(),
-                ),
-              ],
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(
+                    height: 70,
+                  ),
+                  GestureDetector(
+                    child: Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 10, 61, 103),
+                          borderRadius: BorderRadius.circular(7)),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 10,
+                          ),
+                          Text(
+                            "Stop",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
             ),
           ),
         ),
@@ -267,9 +350,7 @@ class _MathsState extends State<Maths> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(
-              width: 10,
-            ),
+            const SizedBox(width: 10),
             Icon(
               e.isSpeak ? Icons.stop : Icons.play_arrow,
               size: 35,
@@ -286,15 +367,11 @@ class _MathsState extends State<Maths> {
     });
     tts.stop();
 
-    // Split description into paragraphs
     List<String> paragraphs = e.description?.split('\n') ?? [];
 
     for (String paragraph in paragraphs) {
-      // Speak each paragraph
       await tts.speak(paragraph);
-
-      // Delay for 5 seconds after reading each paragraph
-      await Future.delayed(Duration(seconds: 50));
+      await Future.delayed(Duration(seconds: 5));
     }
 
     setState(() {
