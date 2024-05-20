@@ -15,13 +15,14 @@ class Maths_OpenAIChatService {
   List<String> threeDimensionalShapes = [
     'Cone',
     'Cuboid',
-    'Cylinder',
+    'cylinder',
     'Sphere',
     'Cube',
     'Tetrahedron'
   ];
 
   Future<String> generateDescription(String prompt) async {
+    print(prompt);
     // Check if the prompt corresponds to a 2D or 3D object
     bool is2DObject = twoDimensionalShapes.contains(prompt);
     bool is3DObject = threeDimensionalShapes.contains(prompt);

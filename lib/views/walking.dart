@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:collection'; // Import for Queue
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_beep/flutter_beep.dart';
@@ -15,23 +14,16 @@ class WalkingPage extends StatefulWidget {
   State<WalkingPage> createState() => _WalkingPageState();
 }
 
-Future<void> _getBeep({required Map<String, dynamic> message}) async {
-  Data data = Data().fromJson(message);
-  if (data.type == 'message') {
-    print('--------->inside if');
-    Future.delayed(const Duration(seconds: 5), () => FlutterBeep.beep());
-  }
-}
 
 class Data {
   String? message;
   String? type;
   Data({this.message, this.type});
-
   Data fromJson(Map<String, dynamic> json) {
     return Data(message: json['message'], type: json['type']);
   }
 }
+//
 
 class _WalkingPageState extends State<WalkingPage> {
   late FlutterTts flutterTts;
@@ -43,7 +35,6 @@ class _WalkingPageState extends State<WalkingPage> {
   bool _ttsSpeaking = false; // Track TTS speaking state
   Queue<String> _notificationQueue = Queue<String>(); // Queue for notifications
   bool _processingQueue = false; // Track if the queue is being processed
-
   String color = "";
 
   @override
@@ -59,16 +50,15 @@ class _WalkingPageState extends State<WalkingPage> {
     _speech = stt.SpeechToText();
     getResponse();
     _notifyUser();
-   
   }
 
   void _notifyUser() async {
-    await flutterTts.setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
+    await flutterTts
+        .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
     setState(() {
       _ttsSpeaking = true;
     });
-    await flutterTts.speak(
-        "hi");
+    await flutterTts.speak("hi");
   }
 
   void _listen() async {
@@ -107,7 +97,7 @@ class _WalkingPageState extends State<WalkingPage> {
       setState(() {
         _isStarted = true;
       });
-       
+
       flutterTts.speak("Walking mode started");
     }
   }
@@ -122,20 +112,19 @@ class _WalkingPageState extends State<WalkingPage> {
       _channel = WebSocketChannel.connect(wsUrl);
       await _channel.ready;
       _channel.stream.listen((message) async {
-        if (_responseThrottle?.isActive ?? false) return; // Ignore messages during throttling
-        _responseThrottle = Timer(Duration(seconds: 3), () {}); // Throttle responses
+        if (_responseThrottle?.isActive ?? false)
+          return; // Ignore messages during throttling
+        _responseThrottle =
+            Timer(Duration(seconds: 3), () {}); // Throttle responses
         Map data = jsonDecode(message);
-        
+
         print(data['distance']);
-        if(data['type'] == 'safe') {
+        if (data['type'] == 'safe') {
           flutterTts.speak("You are safe");
-        }
-        else {
+        } else {
           final distance = (data['distance'] / 100).toStringAsFixed(0);
           flutterTts.speak("door at $distance meters");
-          
         }
-        
       });
     } catch (e) {
       debugPrint(e.toString());
@@ -161,8 +150,6 @@ class _WalkingPageState extends State<WalkingPage> {
     _processingQueue = true;
     final message = _notificationQueue.removeFirst();
 
-    
-
     flutterTts.speak(message).then((_) {
       setState(() {
         _processingQueue = false;
@@ -172,7 +159,8 @@ class _WalkingPageState extends State<WalkingPage> {
 
   @override
   void dispose() {
-    _channel.sink.close(); // Close the WebSocket connection when the widget is disposed
+    _channel.sink
+        .close(); // Close the WebSocket connection when the widget is disposed
     _responseThrottle?.cancel(); // Cancel the throttle timer if active
     super.dispose();
   }

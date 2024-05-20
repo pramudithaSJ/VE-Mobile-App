@@ -1,9 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:visualear/clients/tts_client.dart';
 import 'package:visualear/clients/ws_client.dart';
 import 'package:visualear/models/detection.dart';
 import 'package:visualear/widgets/appbar_widget.dart';
 import '../clients/maths_openai_chat_service.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class Maths extends StatefulWidget {
   const Maths({super.key});
@@ -12,15 +17,105 @@ class Maths extends StatefulWidget {
   State<Maths> createState() => _MathsState();
 }
 
+class Data {
+  String? message;
+  String? type;
+  Data({this.message, this.type});
+  Data fromJson(Map<String, dynamic> json) {
+    return Data(message: json['message'], type: json['type']);
+  }
+}
+
 class _MathsState extends State<Maths> {
+  late FlutterTts flutterTts;
   String color = "";
   List<DetectedObject> detectionsList = List.empty();
   ObjectDetectionClient? detectionClient;
   bool isStart = false;
+  late WebSocketChannel _channel;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _isStarted = false;
+
+  void initState() {
+    super.initState();
+    flutterTts = FlutterTts();
+    _speech = stt.SpeechToText();
+    getResponse();
+    _notifyUser();
+  }
+
+  Future<void> getResponse() async {
+    try {
+      final wsUrl = Uri.parse('ws://172.20.10.3:9002');
+      _channel = WebSocketChannel.connect(wsUrl);
+      await _channel.ready;
+      _channel.stream.listen((message) async {
+        Map data = jsonDecode(message);
+        flutterTts.speak("One Item Detected");
+        print(data['detections']);
+        String Description = await Maths_OpenAIChatService()
+            .generateDescription(data['detections']);
+        print(Description);
+        await flutterTts.speak("this is a ${data['detections']}");
+        await flutterTts.speak(Description);
+      });
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void _listen() async {
+    bool available = await _speech.initialize(
+      onStatus: (val) => print('onStatus: $val'),
+      onError: (val) => print('onError: $val'),
+    );
+
+    if (available) {
+      setState(() => _isListening = true);
+      _speech.listen(
+        onResult: (val) => {
+          _handleCommand(val.recognizedWords),
+          print(val.recognizedWords),
+        },
+      );
+    }
+  }
+
+  void _handleCommand(String command) {
+    // Implement navigation logic based on the command
+    if (command.contains("back")) {
+      Navigator.pop(context);
+    } else if (command.contains("go to page two")) {
+      Navigator.pushNamed(context, '/page2');
+    } else if (command.contains("start")) {
+      print('start maths');
+      _sendMessageToServer({
+        'mode': 'math',
+        'command': 'start',
+      });
+      flutterTts.speak("Maths mode started");
+    }
+  }
+
+  void _notifyUser() async {
+    await flutterTts
+        .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
+    setState(() {});
+    await flutterTts.speak("hi");
+  }
+
+  void _sendMessageToServer(Map<String, dynamic> message) {
+    print(message);
+    try {
+      _channel.sink.add(jsonEncode(message));
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
 
   void stopDetection() async {
     if (detectionClient != null) {
-
       detectionClient?.stopDetection();
       detectionClient?.dispose();
       detectionClient = null;
@@ -34,85 +129,6 @@ class _MathsState extends State<Maths> {
   }
 
   bool generating = false;
-
-  void startDetection() async {
-    if (detectionClient != null) return; 
-    if (mounted) {
-      isStart = true;
-    }
-
-    String server = 'ws://192.168.1.8:9001';
-    await tts.speak("Please wait for result");
-    print(server);
-    detectionClient =
-        ObjectDetectionClient(server); // Listen to the detections stream
-    detectionClient?.startDetection();
-
-     // Listen to the detections stream
-    detectionClient?.detectionsStream.listen((_detections) async {
-      // Process the detections here
-      // For example, you can update the UI based on the received detections
-      print('New detections: $_detections');
-      setState(() {
-        detectionsList = [];
-        generating : true;
-      });
-      if (_detections.isNotEmpty) {
-        stopDetection();
-        detectionsList = _detections;
-        for (DetectedObject object in _detections) {
-          String des =
-              await Maths_OpenAIChatService().generateDescription(object.label);
-          setState(() {
-            object.setDescription(des);
-          });
-          print("${object.label}\n$des");    
-        }
-        stopDetection();
-
-        String result = detectionsList
-            .map((e) =>
-                "${e.label}. confidence is ${e.confidence}.${e.description ?? ''}")
-            .join("\r\n");
-        await tts.speak("Here is detection result.$result");
-
-        if (mounted) {
-          setState(() {
-            
-            isStart = false;
-          });
-        }
-      }else {
-        stopDetection();
-        await tts.speak("Nothing detected. try again.");
-      }
-    }, onError: (error) async {
-      // Handle any errors that occur in the stream
-      print('Error in detection stream: $error');
-      if (mounted) {
-        setState(() {
-          isStart = false;
-        });
-      }
-    }, onDone: () {
-      // Handle the stream being closed, if necessary
-      print('Detection stream closed');  
-    });
-  }
-
-  void onStartTap() {
-    if (mounted) {
-      setState(() {
-        color = detectionClient != null ? "" : "C";
-      });
-    }
-    if (detectionClient == null) {
-      detectionsList = [];
-      startDetection();
-    } else {
-      stopDetection();
-    }
-  }
 
   @override
   void dispose() {
@@ -139,11 +155,21 @@ class _MathsState extends State<Maths> {
                 const SizedBox(
                   height: 20,
                 ),
-                
+
                 Center(
                   child: GestureDetector(
-                    onTap: isStart? null : () {
-                      onStartTap();
+                    onTap: () {
+                      if (_isStarted) {
+                        _sendMessageToServer({
+                          'mode': 'walking',
+                          'command': 'stop',
+                        });
+                        setState(() {
+                          _isStarted = false;
+                        });
+                      } else {
+                        _listen();
+                      }
                     },
                     child: Container(
                       width: 250,
@@ -169,7 +195,7 @@ class _MathsState extends State<Maths> {
                     ),
                   ),
                 ),
-                 Text(
+                Text(
                   speakresult,
                   style: const TextStyle(
                       color: Color.fromARGB(255, 10, 61, 103),
@@ -180,7 +206,7 @@ class _MathsState extends State<Maths> {
                   height: 10,
                 ),
                 //if (detectionsList.isNotEmpty)
-                
+
                 const SizedBox(
                   height: 10,
                 ),
@@ -194,27 +220,28 @@ class _MathsState extends State<Maths> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: detectionsList
                       .map((e) => Card(
-                        child: SizedBox(
-                          width: double.maxFinite,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                          child: SizedBox(
+                              width: double.maxFinite,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text("${e.count} ${e.label} ${e.confidence}%",
-                                  style: const TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.bold),
-                                  ),explainButton(e)
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "${e.count} ${e.label} ${e.confidence}%",
+                                        style: const TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      explainButton(e)
+                                    ],
+                                  ),
+                                  Text(
+                                    e.description ?? "loading description...",
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
                                 ],
-                              ),
-                              Text(
-                                e.description ?? "loading description...",
-                                style: const TextStyle(fontSize: 20),
-                              ),
-                            ],
-                          ))))
-              
+                              ))))
                       .toList(),
                 ),
               ],
@@ -249,27 +276,25 @@ class _MathsState extends State<Maths> {
     );
   }
 
- Future<void> speak(DetectedObject e) async {
-  setState(() {
-    e.isSpeak = true;
-  });
-  tts.stop();
+  Future<void> speak(DetectedObject e) async {
+    setState(() {
+      e.isSpeak = true;
+    });
+    tts.stop();
 
-  // Split description into paragraphs
-  List<String> paragraphs = e.description?.split('\n') ?? [];
+    // Split description into paragraphs
+    List<String> paragraphs = e.description?.split('\n') ?? [];
 
-  for (String paragraph in paragraphs) {
-    // Speak each paragraph
-    await tts.speak(paragraph);
+    for (String paragraph in paragraphs) {
+      // Speak each paragraph
+      await tts.speak(paragraph);
 
-    // Delay for 5 seconds after reading each paragraph
-    await Future.delayed(Duration(seconds: 50));
+      // Delay for 5 seconds after reading each paragraph
+      await Future.delayed(Duration(seconds: 50));
+    }
+
+    setState(() {
+      e.isSpeak = false;
+    });
   }
-
-  setState(() {
-    e.isSpeak = false;
-  });
-}
-
-
 }

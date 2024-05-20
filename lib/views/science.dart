@@ -22,9 +22,6 @@ class _SciencePageState extends State<SciencePage> {
 
   void stopDetection() async {
     if (detectionClient != null) {
-      // Send the command to stop detection first
-
-      // Wait for a few seconds before disposing of the client
       speechRecognizer?.stopListening();
       detectionClient?.stopDetection();
       detectionClient?.dispose();

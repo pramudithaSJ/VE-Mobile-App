@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:visualear/constant/colors.dart';
@@ -7,7 +9,9 @@ import 'package:visualear/views/science.dart';
 import 'package:visualear/views/walking.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'constant/string.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,17 +21,40 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late FlutterTts flutterTts;
-  String color = '';
   late stt.SpeechToText _speech;
   bool _isListening = false;
+  late WebSocketChannel _channel;
+  late FlutterTts flutterTts;
+
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _connectToWebSocket();
     flutterTts = FlutterTts();
-    _notifyUser();
+    
+  }
+
+  void _connectToWebSocket() {
+    try {
+      final wsUrl = Uri.parse('ws://192.168.1.35:9002');
+      _channel = WebSocketChannel.connect(wsUrl);
+      _channel.stream.listen((message) {
+        // Log the messages received from the server
+        print('Received message: $message');
+      });
+
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void _sendMessageToServer(Map<String, dynamic> message) {
+    if (_channel != null) {
+      _channel.sink.add(jsonEncode(message));
+      print('Sent message: ${jsonEncode(message)}');
+    }
   }
 
   void _listen() async {
@@ -50,39 +77,28 @@ class _HomePageState extends State<HomePage> {
 
   void _handleCommand(String command) {
     print(command);
-    // Implement navigation logic based on the command
     if (command.contains("walk")) {
-      // Navigator.pop(context);
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const WalkingPage()),
       );
     } else if (command.contains("maths")) {
-     Navigator.push(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const Maths()),
       );
-    }
-    else if (command.contains("science")) {
-     Navigator.push(
+    } else if (command.contains("science")) {
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SciencePage()),
       );
-    }
-    else if (command.contains("activity")) {
-     Navigator.push(
+    } else if (command.contains("activity")) {
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ActivityPage()),
       );
+      // _sendMessageToServer({'mode': 'money'});
     }
-
-  }
-
-  void _notifyUser() async {
-    await flutterTts.setSpeechRate(0.2);
-    flutterTts.speak(
-        "");
-
   }
 
   @override
