@@ -47,16 +47,20 @@ class _MathsState extends State<Maths> {
 
   Future<void> getResponse() async {
     try {
-      final wsUrl = Uri.parse('ws://172.20.10.3:9002');
+      final wsUrl = Uri.parse('ws://172.20.10.4:9002');
       _channel = WebSocketChannel.connect(wsUrl);
       await _channel.ready;
       _channel.stream.listen((message) async {
         Map data = jsonDecode(message);
+        List<dynamic> detections = data['detections'];
+        String detectionWord = "";
+        if (detections.isNotEmpty) {
+          detectionWord = detections[0]['detections'];
+        }
         flutterTts.speak("One Item Detected");
         print(data['detections']);
         String Description = await Maths_OpenAIChatService()
-            .generateDescription(data['detections']);
-        print(Description);
+            .generateDescription(detectionWord);
         await flutterTts.speak("this is a ${data['detections']}");
         await flutterTts.speak(Description);
       });

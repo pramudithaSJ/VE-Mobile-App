@@ -38,7 +38,7 @@ class _HomePageState extends State<HomePage> {
 
   void _connectToWebSocket() {
     try {
-      final wsUrl = Uri.parse('ws://192.168.1.35:9002');
+      final wsUrl = Uri.parse('ws://192.168.1.38:9002');
       _channel = WebSocketChannel.connect(wsUrl);
       _channel.stream.listen((message) {
         // Log the messages received from the server

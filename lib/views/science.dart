@@ -1,8 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'package:visualear/clients/tts_client.dart';
 import 'package:visualear/clients/ws_client.dart';
 import 'package:visualear/models/detection.dart';
 import 'package:visualear/widgets/appbar_widget.dart';
+import '../clients/maths_openai_chat_service.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../clients/openai_chat_service.dart';
 import '../clients/speech_recognizer.dart';
@@ -15,178 +21,139 @@ class SciencePage extends StatefulWidget {
 }
 
 class _SciencePageState extends State<SciencePage> {
-  String color = "";
-  List<DetectedObject?> detectionsList = List.empty();
-  ObjectDetectionClient? detectionClient;
+  late FlutterTts flutterTts;
+  String detectedWord = "";
+  List<DetectedObject?> detectionsList = [];
   bool isStart = false;
-
-  void stopDetection() async {
-    if (detectionClient != null) {
-      speechRecognizer?.stopListening();
-      detectionClient?.stopDetection();
-      detectionClient?.dispose();
-      detectionClient = null;
-
-      if (mounted) {
-        setState(() {
-          isStart = false;
-        });
-      }
-    }
-  }
-
-  bool generating = false;
-
-  SpeechRecognizer? speechRecognizer;
-
-  void startDetection() async {
-    if (detectionClient != null) return;
-    if (mounted) {
-      isStart = true;
-    }
-    String server = 'ws://192.168.1.8:9002';
-    await tts.speak("Starting object detection. please wait for result");
-    print(server);
-    detectionClient =
-        ObjectDetectionClient(server); // Listen to the detections stream
-    detectionClient?.startDetection();
-
-    detectionClient?.detectionsStream.listen((_detections) async {
-      // Process the detections here
-      // For example, you can update the UI based on the received detections
-      print('New detections: $_detections');
-      setState(() {
-        detectionsList = [];
-        generating = true;
-        speakresult = '';
-      });
-      if (_detections.isNotEmpty) {
-        stopDetection();
-        detectionsList = _detections;
-        for (DetectedObject object in _detections) {
-          String des =
-              await OpenAIChatService().generateDescription(object.label);
-          setState(() {
-            object.setDescription(des);
-          });
-          print("${object.label}\n$des");
-        }
-        await tts.speak(
-            "Detected ${_detections.length} types of Objects. Can you identify these objects?");
-        bool isavailible = await speechRecognizer!.initialize();
-        print(isavailible);
-        setState(() {
-          islistening = true;
-        });
-        if (isavailible) await speechRecognizer?.startListening();
-
-        setState(() {
-          generating = false;
-        });
-      } else {
-        stopDetection();
-        await tts.speak("Nothing detected. try again.");
-      }
-    }, onError: (error) async {
-      // Handle any errors that occur in the stream
-      await tts.speak("Error in detection stream.");
-
-      print('Error in detection stream: $error');
-      if (mounted) {
-        setState(() {
-          isStart = false;
-        });
-      }
-    }, onDone: () {
-      // Handle the stream being closed, if necessary
-      print('Detection stream closed');
-    });
-  }
-
-  void onStartTap() {
-    if (mounted) {
-      setState(() {
-        color = detectionClient != null ? "" : "C";
-      });
-    }
-    if (detectionClient == null) {
-      detectionsList = [];
-      startDetection();
-    } else {
-      stopDetection();
-    }
-  }
-
-  bool islistening = false;
-  String speakresult = '';
+  late WebSocketChannel _channel;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _isStarted = false;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    speechRecognizer = SpeechRecognizer(onError: (error) {
-      print("error : $error");
-    }, onResult: (text) {
-      if (text.isEmpty) return;
-      print("text : $text");
-      //speechRecognizer?.stopListening();
-      setState(() {
-        speakresult = text;
+    flutterTts = FlutterTts();
+    _speech = stt.SpeechToText();
+    getResponse();
+    _notifyUser();
+  }
+
+  Future<void> getResponse() async {
+    try {
+      final wsUrl = Uri.parse('ws://192.168.1.38:9002');
+      _channel = WebSocketChannel.connect(wsUrl);
+
+      _channel.stream.listen((message) async {
+        // Correctly parse the incoming JSON string
+        Map data = jsonDecode(message);
+        print(data);
+        List<dynamic> detections = data['detections'];
+        detectedWord = detections[0];
+
+        // setState(() {
+        //   detectionsList = detections
+        //       .map((e) => DetectedObject.fromJson(e))
+        //       .toList();
+        // });
+
+        await flutterTts
+            .speak("One item detected. Can you identify the detected object?");
+        await flutterTts.awaitSpeakCompletion(true);
+
+        // Start listening for the user's response
+        _listen();
       });
-    }, onStatus: (status) async {
-      if (status == 'done') {
-        print("status : $status");
-        print("speakresult : " + speakresult);
-        if (mounted)
-          setState(() {
-            islistening = false;
-          });
-        if (speakresult == '') {
-          await tts.speak('Sorry, I can\'t hear you!');
-        } else {
-          // Normalize the speech result for comparison
-          String normalizedSpeakResult = speakresult.toLowerCase().trim();
-          print("detectionsList:" + detectionsList.length.toString());
-          // Assuming detectionsList is a list of objects with a 'label' property
-          DetectedObject? match;
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
 
-          try {
-            match = detectionsList.firstWhere((DetectedObject? detection) {
-              try {
-                if (detection == null) return false;
-                // Normalize label for case-insensitive comparison
-                String normalizedLabel = detection.label.toLowerCase().trim();
-                // Check if the speech result is contained within the label or closely matches it
-                return normalizedLabel.contains(normalizedSpeakResult) ||
-                    normalizedSpeakResult.contains(normalizedLabel);
-              } catch (e) {
-                return false;
-              }
-            }); // Use null if no match found
-          } catch (e) {}
+  void _listen() async {
+    bool available = await _speech.initialize(
+      onStatus: (val) => print('onStatus: $val'),
+      onError: (val) => print('onError: $val'),
+    );
 
-          print(match.toString());
-          if (match != null) {
-            // A match is found
-            await tts.speak('Correct, you identified "${match.label}".');
-          } else {
-            // No match found
-            await tts.speak('Your answer is wrong.');
-            String result = detectionsList
-                .map((e) =>
-                    "${e!.label}. confidence is ${e.confidence}.${e.description ?? ''}")
-                .join("\r\n");
-            await tts.speak("Here is detection result.$result");
+    final options = SpeechListenOptions(
+        listenMode: ListenMode.confirmation,
+        cancelOnError: true,
+        partialResults: false,
+        autoPunctuation: true,
+        enableHapticFeedback: true);
+
+    if (available) {
+      setState(() => _isListening = true);
+      _speech.listen(
+        listenFor: Duration(seconds: 30), // Maximum listening duration
+        listenOptions: options,
+        onResult: (val) {
+          if (val.finalResult) {
+            _handleCommand(val.recognizedWords);
           }
-        }
+        },
+      );
+    }
+  }
+
+  void _handleCommand(String command) async {
+    // Implement navigation logic based on the command
+    if (command.contains("back")) {
+      Navigator.pop(context);
+    } else if (command.contains("go to page two")) {
+      Navigator.pushNamed(context, '/page2');
+    } else if (command.contains("start")) {
+      print('start science');
+      _sendMessageToServer({
+        'mode': 'science',
+        'command': 'start',
+      });
+      await flutterTts.speak("Science mode started");
+    } else if (detectedWord.isNotEmpty) {
+      if (command.toLowerCase().trim() == detectedWord.toLowerCase().trim()) {
+        await flutterTts.speak("Correct, you identified $detectedWord.");
+        detectedWord = "";
+      } else {
+        await flutterTts.speak("Your answer is wrong.");
+        String description =
+            await OpenAIChatService().generateDescription(detectedWord);
+        await flutterTts.speak("This is a $detectedWord.");
+        await flutterTts.speak(description);
+        detectedWord = "";
       }
-    });
+    }
+  }
+
+  void _notifyUser() async {
+    await flutterTts
+        .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
+    setState(() {});
+    await flutterTts.speak("Hi");
+  }
+
+  void _sendMessageToServer(Map<String, dynamic> message) {
+    print(message);
+    try {
+      _channel.sink.add(jsonEncode(message));
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void stopDetection() async {
+    if (isStart) {
+      _sendMessageToServer({'mode': 'science', 'command': 'stop'});
+      setState(() {
+        isStart = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     super.dispose();
     stopDetection();
+    _channel.sink.close();
   }
 
   @override
@@ -208,11 +175,13 @@ class _SciencePageState extends State<SciencePage> {
                 ),
                 Center(
                   child: GestureDetector(
-                    onTap: isStart
-                        ? null
-                        : () {
-                            onStartTap();
-                          },
+                    onTap: () {
+                      if (_isStarted) {
+                        stopDetection();
+                      } else {
+                        _listen();
+                      }
+                    },
                     child: Container(
                       width: 250,
                       height: 250,
@@ -222,36 +191,30 @@ class _SciencePageState extends State<SciencePage> {
                             ? const Color.fromARGB(255, 248, 126, 167)
                             : const Color.fromARGB(255, 255, 170, 199),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            isStart
-                                ? "Detecting"
-                                : (islistening ? "Listening.." : "Start"),
-                            style: const TextStyle(
-                                color: Color.fromARGB(255, 10, 61, 103),
-                                fontSize: 50,
-                                fontWeight: FontWeight.bold),
-                          )
-                        ],
+                      child: Center(
+                        child: Text(
+                          isStart
+                              ? "Detecting"
+                              : (_isListening ? "Listening.." : "Start"),
+                          style: const TextStyle(
+                              color: Color.fromARGB(255, 10, 61, 103),
+                              fontSize: 50,
+                              fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ),
                 ),
-
+                const SizedBox(
+                  height: 20,
+                ),
                 Text(
-                  speakresult,
+                  detectedWord,
                   style: const TextStyle(
                       color: Color.fromARGB(255, 10, 61, 103),
                       fontSize: 20,
                       fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                //if (detectionsList.isNotEmpty)
-
                 const SizedBox(
                   height: 10,
                 ),
@@ -326,7 +289,7 @@ class _SciencePageState extends State<SciencePage> {
     });
     tts.stop();
     bool s1 = await tts.speak(
-        "detected ${e.count} ${e.label}. confidence is ${e.confidence}%.\n${e.description}");
+        "Detected ${e.count} ${e.label}. Confidence is ${e.confidence}%. ${e.description}");
     setState(() {
       e.isSpeak = false;
     });
