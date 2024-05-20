@@ -108,7 +108,7 @@ class _WalkingPageState extends State<WalkingPage> {
 
   Future<void> getResponse() async {
     try {
-      final wsUrl = Uri.parse('ws://192.168.1.35:9002');
+      final wsUrl = Uri.parse('ws://172.20.10.4:9002');
       _channel = WebSocketChannel.connect(wsUrl);
       await _channel.ready;
       _channel.stream.listen((message) async {
@@ -304,7 +304,7 @@ class _WalkingPageState extends State<WalkingPage> {
                             width: 10,
                           ),
                           Text(
-                            "Get beep",
+                            "Stop",
                             style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,

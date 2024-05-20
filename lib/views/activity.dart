@@ -18,7 +18,7 @@ class _ActivityPageState extends State<ActivityPage> {
   int answer = 0;
   String question = "";
   bool start = false;
-  String localIp = "http://192.168.1.35:8080/";
+  String localIp = "http://172.20.10.4:8080/";
   int money = 0;
   bool _ttsSpeaking = false;
   TextToSpeechConverter TextSpeech = TextToSpeechConverter();
@@ -37,6 +37,16 @@ class _ActivityPageState extends State<ActivityPage> {
       // Process the next item in the queue
     });
     _speech = stt.SpeechToText();
+    _notifyUser();
+  }
+
+  void _notifyUser() async {
+    await flutterTts
+        .setSpeechRate(0.5); // Set speech rate to a slower value (0.0 to 1.0)
+    setState(() {
+      _ttsSpeaking = true;
+    });
+    await flutterTts.speak("You are in activity mode now");
   }
 
   void app_listen() async {
@@ -62,19 +72,22 @@ class _ActivityPageState extends State<ActivityPage> {
             } else if (text.contains("start answering") ||
                 text == "start answering" ||
                 text == "next amount" ||
+                text == "show money" ||
                 text == "amount") {
               start_money();
             } else if (text.contains("answer is done") ||
                 text == "answer is done" ||
                 text == "done") {
               answerIsDone();
-            } else if (text.contains("repeat answer") ||
-                text == "repeat answer") {
+            } else if (text.contains("reset") || text == "reset answer") {
               repeatAnswer();
             } else if (text.contains("cancel question") ||
                 text == "cancel question" ||
-                text == "cancel") {
+                text == "cancel" ||
+                text == "cancer") {
               cancelQuestion();
+            } else if (text.contains("back")) {
+              Navigator.pop(context);
             }
           }),
         );
@@ -93,7 +106,7 @@ class _ActivityPageState extends State<ActivityPage> {
 
       try {
         // Replace 127.0.0.1 with your development machine's IP address
-        var url = 'http://192.168.1.35:8080/question'; // Use your actual IP
+        var url = 'http://172.20.10.4:8080/question'; // Use your actual IP
         var response = await http.get(Uri.parse(url));
 
         if (response.statusCode == 200) {
@@ -108,21 +121,24 @@ class _ActivityPageState extends State<ActivityPage> {
             start = true;
           } else {
             print('Empty response body');
-            await flutterTts.speak("The server returned an empty response. Please try again later.");
+            await flutterTts.speak(
+                "The server returned an empty response. Please try again later.");
           }
         } else {
-          print('Failed to fetch question. Status code: ${response.statusCode}');
-          await flutterTts.speak("Failed to fetch the question. Please check your connection and try again.");
+          print(
+              'Failed to fetch question. Status code: ${response.statusCode}');
+          await flutterTts.speak(
+              "Failed to fetch the question. Please check your connection and try again.");
         }
       } catch (e) {
         print('Failed to fetch question: $e');
-        await flutterTts.speak("Failed to fetch the question. Please check your connection and try again.");
+        await flutterTts.speak(
+            "Failed to fetch the question. Please check your connection and try again.");
       }
     } else {
       await flutterTts.speak("Cancel The Question");
     }
   }
-
 
   void app_repeat() async {
     if (start) {
@@ -132,14 +148,14 @@ class _ActivityPageState extends State<ActivityPage> {
     }
   }
 
-Future<void> start_money() async {
+  Future<void> start_money() async {
     if (start) {
       if (money == 0) {
         await flutterTts.speak("Please starting show your money");
       } else {
         await flutterTts.speak("Show you next money");
       }
-      var url = localIp + 'detect';
+      var url = 'http://172.20.10.4:8080/detect';
 
       try {
         var response = await http.get(Uri.parse(url));
@@ -156,7 +172,8 @@ Future<void> start_money() async {
         }
       } catch (e) {
         print('Failed to detect money: $e');
-        await flutterTts.speak("Failed to detect money. Please check your connection and try again.");
+        await flutterTts.speak(
+            "Failed to detect money. Please check your connection and try again.");
       }
     } else {
       await flutterTts.speak("First of all, you need to start the question");
@@ -166,35 +183,36 @@ Future<void> start_money() async {
   void answerIsDone() async {
     print(answer);
     print(money);
-    // if(start==false) {
-    if (answer == money) {
-      await flutterTts.speak("Congratulations your answer is correct");
-    } else if (answer > money) {
-      await flutterTts.speak(
-          "Your answer is incorrect. The correct answer is Rs." +
-              answer.toString() +
-              ". The value of the answer you have shown is " +
-              money.toString() +
-              " rupees. " +
-              (answer - money).toString() +
-              " rupees less to correct the answer.");
+    if (start == true) {
+      if (answer == money) {
+        await flutterTts.speak("Congratulations your answer is correct");
+      } else if (answer > money) {
+        await flutterTts.speak(
+            "Your answer is incorrect. The correct answer is Rs." +
+                answer.toString() +
+                ". The value of the answer you have shown is " +
+                money.toString() +
+                " rupees. " +
+                (answer - money).toString() +
+                " rupees less to correct the answer.");
+      } else {
+        await flutterTts.speak(
+            "Your answer is incorrect. The correct answer is Rs." +
+                answer.toString() +
+                ". The value of the answer you have shown is " +
+                money.toString() +
+                " rupees. " +
+                (money - answer).toString() +
+                " rupees more to correct the answer.");
+      }
     } else {
-      await flutterTts.speak(
-          "Your answer is incorrect. The correct answer is Rs." +
-              answer.toString() +
-              ". The value of the answer you have shown is " +
-              money.toString() +
-              " rupees. " +
-              (money - answer).toString() +
-              " rupees more to correct the answer.");
+      await TextSpeech.speak("First Off All You Start The Question");
     }
-    // }else{
-    //   await TextSpeech.speak("First Off All You Start The Question");
-    // }
   }
 
   void repeatAnswer() async {
-    if (start == false) {
+    if (start == true) {
+      await TextSpeech.speak("Money Amount reset to zero");
       money = 0;
     } else {
       await TextSpeech.speak("First Off All You Start The Question");
@@ -203,6 +221,7 @@ Future<void> start_money() async {
 
   void cancelQuestion() async {
     if (start == true) {
+      await TextSpeech.speak("You cancel the question.");
       answer = 0;
       question = "";
       start = false;
@@ -323,7 +342,7 @@ Future<void> start_money() async {
                                       size: 50,
                                       color: Color.fromARGB(255, 248, 129, 169),
                                     ),
-                                    Text("Start Answering or Next Amount",
+                                    Text("Show Money",
                                         style: TextStyle(
                                           color: Color.fromARGB(
                                               255, 248, 129, 169),
@@ -382,7 +401,7 @@ Future<void> start_money() async {
                                       size: 50,
                                       color: Color.fromARGB(255, 248, 129, 169),
                                     ),
-                                    Text("Repeat Answer",
+                                    Text("Reset Answer",
                                         style: TextStyle(
                                           color: Color.fromARGB(
                                               255, 248, 129, 169),
