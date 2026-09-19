@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class OpenAIChatService {
-  final String apiKey = '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'; // Replace with your actual API key
+  // Supplied at build time: flutter run --dart-define=OPENAI_API_KEY=<key>
+  final String apiKey = const String.fromEnvironment('OPENAI_API_KEY');
   final String apiUrl = 'https://api.openai.com/v1/chat/completions';
 
   Future<String> generateDescription(String prompt) async {

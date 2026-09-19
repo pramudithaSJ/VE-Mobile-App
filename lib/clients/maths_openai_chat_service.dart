@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Maths_OpenAIChatService {
-  final String apiKey =
-      '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'; //  API key
+  // Supplied at build time: flutter run --dart-define=OPENAI_API_KEY=<key>
+  final String apiKey = const String.fromEnvironment('OPENAI_API_KEY');
   final String apiUrl = 'https://api.openai.com/v1/chat/completions';
 
   List<String> twoDimensionalShapes = [
